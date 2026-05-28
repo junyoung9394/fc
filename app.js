@@ -181,7 +181,7 @@ function addItem(formData) {
 
   const playerName = formData.get("playerName").trim();
   const grade = formData.get("grade");
-  const seasonName = formData.get("seasonName").trim();
+  const seasonName = String(formData.get("seasonName") || "").trim();
 
   state.items.unshift({
     id: crypto.randomUUID(),
@@ -199,6 +199,7 @@ function addItem(formData) {
 
   state.selectedPlayer = null;
   els.searchResults.innerHTML = "";
+  els.seasonName.innerHTML = '<option value="">선수명을 입력한 뒤 시즌을 불러오세요</option>';
   addLog(`${playerName} ${grade}강 매물을 등록했습니다.`);
   save();
   renderRows();
@@ -211,9 +212,11 @@ async function searchPlayers() {
     return;
   }
 
-  els.searchResults.textContent = "검색 중...";
+  els.searchResults.textContent = "시즌 목록을 불러오는 중...";
+  els.seasonName.innerHTML = '<option value="">불러오는 중...</option>';
+
   try {
-    const response = await fetch(`/api/players?q=${encodeURIComponent(query)}&limit=8`, {
+    const response = await fetch(`/api/players?q=${encodeURIComponent(query)}&limit=80`, {
       headers: state.settings.nexonKey ? { "x-nxopen-api-key": state.settings.nexonKey } : {},
     });
     const data = await response.json();
@@ -221,21 +224,38 @@ async function searchPlayers() {
     renderSearchResults(data.players || []);
   } catch (error) {
     els.searchResults.textContent = "";
+    els.seasonName.innerHTML = '<option value="">검색 실패</option>';
     addLog(`선수 검색 실패: ${error.message}`);
   }
 }
 
 function renderSearchResults(players) {
   els.searchResults.innerHTML = "";
+  els.seasonName.innerHTML = "";
+
   if (players.length === 0) {
+    els.seasonName.innerHTML = '<option value="">검색 결과 없음</option>';
     els.searchResults.textContent = "검색 결과가 없습니다.";
     return;
   }
 
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = `${players.length}개 시즌 중 선택하세요`;
+  els.seasonName.appendChild(placeholder);
+
   players.forEach((player) => {
+    const option = document.createElement("option");
+    option.value = player.seasonName || "";
+    option.textContent = `${player.seasonName || "시즌 정보 없음"} · SPID ${player.spid}`;
+    option.dataset.spid = player.spid;
+    option.dataset.playerName = player.name;
+    els.seasonName.appendChild(option);
+
     const button = document.createElement("button");
     button.className = "result-button";
     button.type = "button";
+    button.dataset.spid = player.spid;
     button.innerHTML = `
       <img src="${player.imageUrl}" alt="" />
       <div>
@@ -243,14 +263,23 @@ function renderSearchResults(players) {
         <span>${player.seasonName || "시즌 정보 없음"} · SPID ${player.spid}</span>
       </div>
     `;
-    button.addEventListener("click", () => {
-      state.selectedPlayer = player;
-      els.playerName.value = player.name;
-      els.seasonName.value = player.seasonName || "";
-      addLog(`${player.name} ${player.seasonName || ""} 선수를 선택했습니다.`);
-    });
+    button.addEventListener("click", () => selectPlayerSeason(player));
     els.searchResults.appendChild(button);
   });
+
+  addLog(`${els.playerName.value.trim()} 시즌 ${players.length}개를 불러왔습니다.`);
+}
+
+function selectPlayerSeason(player) {
+  state.selectedPlayer = player;
+  els.playerName.value = player.name;
+  els.seasonName.value = player.seasonName || "";
+
+  els.searchResults.querySelectorAll(".result-button").forEach((button) => {
+    button.classList.toggle("selected", button.dataset.spid === String(player.spid));
+  });
+
+  addLog(`${player.name} ${player.seasonName || ""} 시즌을 선택했습니다.`);
 }
 
 async function fetchLatestPrice(item) {
@@ -364,6 +393,16 @@ els.form.addEventListener("submit", (event) => {
 });
 
 els.searchPlayers.addEventListener("click", searchPlayers);
+els.seasonName.addEventListener("change", () => {
+  const option = els.seasonName.selectedOptions[0];
+  if (!option || !option.dataset.spid) return;
+  selectPlayerSeason({
+    spid: Number(option.dataset.spid),
+    name: option.dataset.playerName || els.playerName.value.trim(),
+    seasonName: option.value,
+    imageUrl: `https://open.api.nexon.com/live/externalAssets/common/players/p${option.dataset.spid}.png`,
+  });
+});
 els.checkButton.addEventListener("click", checkItems);
 els.toggleRunButton.addEventListener("click", toggleRun);
 
@@ -378,6 +417,7 @@ els.saveSettings.addEventListener("click", () => {
 
 els.sampleButton.addEventListener("click", () => {
   els.playerName.value = "손흥민";
+  els.seasonName.innerHTML = '<option value="24TOTY">24TOTY</option>';
   els.seasonName.value = "24TOTY";
   els.grade.value = "5";
   els.upperPrice.value = "1240000000000";
