@@ -50,9 +50,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { kakaoKey, refreshToken, text } = req.body || {};
+    const { text } = req.body || {};
+    const kakaoKey = process.env.KAKAO_REST_API_KEY;
+    const refreshToken = process.env.KAKAO_REFRESH_TOKEN;
     if (!kakaoKey || !refreshToken || !text) {
-      res.status(400).json({ message: "kakaoKey, refreshToken, text가 필요합니다." });
+      res.status(400).json({ message: "서버에 카카오 환경값이 설정되어 있지 않습니다." });
       return;
     }
 

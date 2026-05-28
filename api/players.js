@@ -5,7 +5,10 @@ const cache = {
 };
 
 async function fetchJson(url) {
-  const response = await fetch(url);
+  const nexonKey = process.env.NEXON_OPEN_API_KEY;
+  const response = await fetch(url, {
+    headers: nexonKey ? { "x-nxopen-api-key": nexonKey } : {},
+  });
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`${response.status} ${text}`);
