@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FC온라인 매물 알림</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">FC Online Market Watch</p>
+        <h1>상한가 상승 알림</h1>
+      </div>
+      <div class="status-pill" id="runStatus">감시 대기</div>
+    </header>
+
+    <main class="layout">
+      <section class="panel search-panel">
+        <div class="panel-head">
+          <div>
+            <h2>매물 검색</h2>
+            <p>선수명과 시즌, 강화 단계를 입력해서 감시 목록에 등록하세요.</p>
+          </div>
+          <button class="icon-button" id="sampleButton" type="button" title="샘플 매물 불러오기">↻</button>
+        </div>
+
+        <form id="searchForm" class="search-form">
+          <label>
+            선수명
+            <input id="playerName" name="playerName" placeholder="예: 손흥민" autocomplete="off" required />
+          </label>
+          <button id="searchPlayers" type="button">넥슨 API로 선수 검색</button>
+          <div class="search-results" id="searchResults"></div>
+          <label>
+            시즌
+            <input id="seasonName" name="seasonName" placeholder="예: 24TOTY, ICON" autocomplete="off" />
+          </label>
+          <label>
+            강화
+            <select id="grade" name="grade">
+              <option value="1">1강</option>
+              <option value="2">2강</option>
+              <option value="3">3강</option>
+              <option value="4">4강</option>
+              <option value="5">5강</option>
+              <option value="6">6강</option>
+              <option value="7">7강</option>
+              <option value="8">8강</option>
+              <option value="9">9강</option>
+              <option value="10">10강</option>
+              <option value="11">11강</option>
+              <option value="12">12강</option>
+              <option value="13">13강</option>
+            </select>
+          </label>
+          <label>
+            현재 상한가
+            <input id="upperPrice" name="upperPrice" inputmode="numeric" placeholder="예: 1240000000000" required />
+          </label>
+          <label>
+            목표 상승폭
+            <select id="threshold" name="threshold">
+              <option value="1">1원 이상 상승</option>
+              <option value="0.5">0.5% 이상 상승</option>
+              <option value="1p">1% 이상 상승</option>
+              <option value="3p">3% 이상 상승</option>
+              <option value="5p">5% 이상 상승</option>
+            </select>
+          </label>
+          <button class="primary" type="submit">매물 등록</button>
+        </form>
+      </section>
+
+      <section class="panel watch-panel">
+        <div class="panel-head">
+          <div>
+            <h2>구매 대기 목록</h2>
+            <p>상한가가 등록 시점보다 올라가면 즉시 알림 기록에 남깁니다.</p>
+          </div>
+          <div class="toolbar">
+            <button id="checkButton" type="button">지금 확인</button>
+            <button id="toggleRunButton" type="button">자동 감시 시작</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>매물</th>
+                <th>등록 상한가</th>
+                <th>현재 상한가</th>
+                <th>변화</th>
+                <th>상태</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="watchRows"></tbody>
+          </table>
+        </div>
+        <p class="empty-state" id="emptyState">아직 등록된 매물이 없습니다.</p>
+      </section>
+
+      <section class="panel settings-panel">
+        <div class="panel-head">
+          <div>
+            <h2>알림 설정</h2>
+            <p>카카오 토큰은 브라우저 저장소에만 보관됩니다. 운영용은 서버 저장을 권장합니다.</p>
+          </div>
+        </div>
+        <div class="settings-grid">
+          <label>
+            Nexon Open API Key
+            <input id="nexonKey" placeholder="test_..." />
+          </label>
+          <label>
+            Kakao REST API Key
+            <input id="kakaoKey" placeholder="60d7..." />
+          </label>
+          <label>
+            Kakao Refresh Token
+            <input id="refreshToken" placeholder="5izA..." />
+          </label>
+          <label>
+            확인 주기
+            <select id="intervalSeconds">
+              <option value="30">30초</option>
+              <option value="60">1분</option>
+              <option value="180">3분</option>
+              <option value="300">5분</option>
+            </select>
+          </label>
+          <button id="saveSettings" type="button">설정 저장</button>
+        </div>
+      </section>
+
+      <section class="panel log-panel">
+        <div class="panel-head">
+          <div>
+            <h2>알림 기록</h2>
+            <p>감지된 상승 내역과 테스트 메시지를 확인합니다.</p>
+          </div>
+          <button id="clearLog" type="button">기록 비우기</button>
+        </div>
+        <ol id="alertLog" class="alert-log"></ol>
+      </section>
+    </main>
+
+    <template id="rowTemplate">
+      <tr>
+        <td>
+          <strong data-field="title"></strong>
+          <span data-field="meta"></span>
+        </td>
+        <td data-field="basePrice"></td>
+        <td>
+          <input class="price-input" data-field="currentInput" inputmode="numeric" />
+        </td>
+        <td data-field="change"></td>
+        <td><span class="badge" data-field="state"></span></td>
+        <td><button class="danger" data-action="remove" type="button">삭제</button></td>
+      </tr>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
