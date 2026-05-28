@@ -17,8 +17,30 @@ const cache = {
   loadedAt: 0,
 };
 
+async function loadLocalEnv() {
+  const file = path.join(root, ".env.local");
+  try {
+    const text = await readFile(file, "utf8");
+    text.split(/\r?\n/).forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) return;
+      const index = trimmed.indexOf("=");
+      const key = trimmed.slice(0, index).trim();
+      const value = trimmed.slice(index + 1).trim();
+      if (key && process.env[key] === undefined) process.env[key] = value;
+    });
+  } catch {
+    // Optional local-only configuration.
+  }
+}
+
+await loadLocalEnv();
+
 function sendJson(res, status, body) {
-  res.writeHead(status, { "Content-Type": "application/json;charset=utf-8" });
+  res.writeHead(status, {
+    "Content-Type": "application/json;charset=utf-8",
+    "Cache-Control": "no-store",
+  });
   res.end(JSON.stringify(body));
 }
 
@@ -29,7 +51,13 @@ async function readJsonBody(req) {
 }
 
 async function fetchJson(url, headers = {}) {
-  const response = await fetch(url, { headers });
+  const nexonKey = process.env.NEXON_OPEN_API_KEY;
+  const response = await fetch(url, {
+    headers: {
+      ...headers,
+      ...(nexonKey ? { "x-nxopen-api-key": nexonKey } : {}),
+    },
+  });
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`${response.status} ${text}`);
@@ -146,9 +174,11 @@ async function sendKakaoMemo(accessToken, text) {
 
 async function handleKakaoSend(req, res) {
   try {
-    const { kakaoKey, refreshToken, text } = await readJsonBody(req);
+    const { text } = await readJsonBody(req);
+    const kakaoKey = process.env.KAKAO_REST_API_KEY;
+    const refreshToken = process.env.KAKAO_REFRESH_TOKEN;
     if (!kakaoKey || !refreshToken || !text) {
-      return sendJson(res, 400, { message: "kakaoKey, refreshToken, text가 필요합니다." });
+      return sendJson(res, 400, { message: "서버에 카카오 환경값이 설정되어 있지 않습니다." });
     }
 
     const token = await refreshKakaoAccessToken(kakaoKey, refreshToken);
@@ -175,7 +205,10 @@ async function serveStatic(res, pathname) {
 
   try {
     const body = await readFile(file);
-    res.writeHead(200, { "Content-Type": types[path.extname(file)] || "application/octet-stream" });
+    res.writeHead(200, {
+      "Content-Type": types[path.extname(file)] || "application/octet-stream",
+      "Cache-Control": "no-store",
+    });
     res.end(body);
   } catch {
     res.writeHead(404);

@@ -5,9 +5,6 @@ const state = {
   logs: [],
   selectedPlayer: null,
   settings: {
-    nexonKey: "",
-    kakaoKey: "",
-    refreshToken: "",
     intervalSeconds: 30,
   },
   timer: null,
@@ -28,11 +25,6 @@ const els = {
   checkButton: document.querySelector("#checkButton"),
   toggleRunButton: document.querySelector("#toggleRunButton"),
   runStatus: document.querySelector("#runStatus"),
-  nexonKey: document.querySelector("#nexonKey"),
-  kakaoKey: document.querySelector("#kakaoKey"),
-  refreshToken: document.querySelector("#refreshToken"),
-  intervalSeconds: document.querySelector("#intervalSeconds"),
-  saveSettings: document.querySelector("#saveSettings"),
   sampleButton: document.querySelector("#sampleButton"),
   alertLog: document.querySelector("#alertLog"),
   clearLog: document.querySelector("#clearLog"),
@@ -100,6 +92,22 @@ function addLog(text) {
   renderLogs();
 }
 
+async function parseJsonResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  const text = await response.text();
+
+  if (!contentType.includes("application/json")) {
+    const preview = text.trim().replace(/\s+/g, " ").slice(0, 120);
+    throw new Error(`API가 JSON이 아닌 응답을 보냈습니다: ${preview || response.status}`);
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error("API 응답 JSON을 읽지 못했습니다.");
+  }
+}
+
 function renderRows() {
   els.watchRows.innerHTML = "";
   els.emptyState.classList.toggle("visible", state.items.length === 0);
@@ -152,10 +160,6 @@ function renderLogs() {
 }
 
 function renderSettings() {
-  els.nexonKey.value = state.settings.nexonKey;
-  els.kakaoKey.value = state.settings.kakaoKey;
-  els.refreshToken.value = state.settings.refreshToken;
-  els.intervalSeconds.value = String(state.settings.intervalSeconds);
 }
 
 function renderRunState() {
@@ -217,9 +221,9 @@ async function searchPlayers() {
 
   try {
     const response = await fetch(`/api/players?q=${encodeURIComponent(query)}&limit=80`, {
-      headers: state.settings.nexonKey ? { "x-nxopen-api-key": state.settings.nexonKey } : {},
+      headers: {},
     });
-    const data = await response.json();
+    const data = await parseJsonResponse(response);
     if (!response.ok) throw new Error(data.message || "선수 검색 실패");
     renderSearchResults(data.players || []);
   } catch (error) {
@@ -286,9 +290,9 @@ async function fetchLatestPrice(item) {
   if (!item.spid) return null;
 
   const response = await fetch(`/api/price?spid=${encodeURIComponent(item.spid)}&grade=${encodeURIComponent(item.grade)}`, {
-    headers: state.settings.nexonKey ? { "x-nxopen-api-key": state.settings.nexonKey } : {},
+    headers: {},
   });
-  const data = await response.json();
+  const data = await parseJsonResponse(response);
   if (!response.ok) {
     if (response.status !== 501) throw new Error(data.message || "상한가 조회 실패");
     return null;
@@ -297,29 +301,13 @@ async function fetchLatestPrice(item) {
 }
 
 async function sendKakaoMessage(text) {
-  if (!state.settings.kakaoKey || !state.settings.refreshToken) {
-    addLog("카카오 키 또는 refresh token이 없어 메시지는 기록에만 남겼습니다.");
-    return;
-  }
-
   const response = await fetch("/api/kakao/send", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      kakaoKey: state.settings.kakaoKey,
-      refreshToken: state.settings.refreshToken,
-      text,
-    }),
+    body: JSON.stringify({ text }),
   });
-  const data = await response.json();
+  const data = await parseJsonResponse(response);
   if (!response.ok) throw new Error(data.message || "카카오 메시지 전송 실패");
-
-  if (data.refreshToken && data.refreshToken !== state.settings.refreshToken) {
-    state.settings.refreshToken = data.refreshToken;
-    save();
-    renderSettings();
-    addLog("새 refresh token을 저장했습니다.");
-  }
 }
 
 async function checkItems() {
@@ -405,15 +393,6 @@ els.seasonName.addEventListener("change", () => {
 });
 els.checkButton.addEventListener("click", checkItems);
 els.toggleRunButton.addEventListener("click", toggleRun);
-
-els.saveSettings.addEventListener("click", () => {
-  state.settings.nexonKey = els.nexonKey.value.trim();
-  state.settings.kakaoKey = els.kakaoKey.value.trim();
-  state.settings.refreshToken = els.refreshToken.value.trim();
-  state.settings.intervalSeconds = Number(els.intervalSeconds.value);
-  save();
-  addLog("알림 설정을 저장했습니다.");
-});
 
 els.sampleButton.addEventListener("click", () => {
   els.playerName.value = "손흥민";
