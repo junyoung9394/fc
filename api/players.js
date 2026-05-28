@@ -50,6 +50,11 @@ export default async function handler(req, res) {
     const seasonMap = new Map(seasons.map((season) => [Number(season.seasonId), normalizeSeason(season)]));
     const matches = players
       .filter((player) => String(player.name || "").toLowerCase().includes(query))
+      .sort((a, b) => {
+        const aExact = String(a.name || "").toLowerCase() === query ? 0 : 1;
+        const bExact = String(b.name || "").toLowerCase() === query ? 0 : 1;
+        return aExact - bExact || Number(b.id) - Number(a.id);
+      })
       .slice(0, limit)
       .map((player) => {
         const seasonId = seasonIdFromSpid(player.id);
