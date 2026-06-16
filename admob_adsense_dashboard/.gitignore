@@ -1,0 +1,27 @@
+# Flutter/Dart/Pub
+**/doc/api/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Android
+/android/app/debug
+/android/app/profile
+/android/app/release
+android/app/google-services.json
+android/local.properties
+
+# IntelliJ
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Misc
+*.class
+*.log
+.DS_Store
